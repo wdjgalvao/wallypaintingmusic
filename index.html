@@ -205,12 +205,10 @@
     });
   }
 
-  const AUDIO_FOLDER = 'MP3 com nomes pronto';
-
   function playTrack(i) {
     if (i < 0 || i >= tracks.length) return;
     currentIndex = i;
-    audio.src = encodeURIComponent(AUDIO_FOLDER) + '/' + encodeURIComponent(tracks[i].file);
+    audio.src = encodeURIComponent(tracks[i].file);
     audio.play().catch(() => {});
     nowPlayingTitle.textContent = tracks[i].title;
     renderList(searchEl.value);
