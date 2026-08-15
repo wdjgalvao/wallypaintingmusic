@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wally Painting — Music</title>
+<style>
+  :root {
+    --orange: #ff6b00;
+    --charcoal: #2e3135;
+    --charcoal-light: #3a3e44;
+    --text: #f4f4f4;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+    background: var(--charcoal);
+    color: var(--text);
+    display: flex;
+    justify-content: center;
+    padding: 24px 12px 60px;
+  }
+  .player {
+    width: 100%;
+    max-width: 480px;
+  }
+  header {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  header h1 {
+    color: var(--orange);
+    font-size: 20px;
+    margin: 0 0 4px;
+    letter-spacing: 0.3px;
+  }
+  header p {
+    margin: 0;
+    font-size: 13px;
+    color: #9a9ea3;
+  }
+
+  .now-playing {
+    background: var(--charcoal-light);
+    border-radius: 14px;
+    padding: 18px;
+    margin-bottom: 18px;
+    border: 1px solid #44484e;
+  }
+  .now-playing .label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--orange);
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .now-playing .title {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 14px;
+    min-height: 20px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  audio {
+    width: 100%;
+    height: 40px;
+  }
+  audio::-webkit-media-controls-panel {
+    background-color: var(--charcoal-light);
+  }
+
+  .controls-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 14px;
+  }
+  .controls-row button {
+    flex: 1;
+    background: var(--orange);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .controls-row button:hover { opacity: 0.9; }
+  .controls-row button.secondary {
+    background: transparent;
+    border: 1px solid #55595f;
+    color: var(--text);
+  }
+
+  .search {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid #44484e;
+    background: var(--charcoal-light);
+    color: var(--text);
+    font-size: 13px;
+    margin-bottom: 10px;
+  }
+  .search::placeholder { color: #8a8e93; }
+
+  .tracklist {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 480px;
+    overflow-y: auto;
+    border-radius: 12px;
+    border: 1px solid #44484e;
+  }
+  .tracklist li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    border-bottom: 1px solid #3a3e44;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background 0.15s;
+  }
+  .tracklist li:last-child { border-bottom: none; }
+  .tracklist li:hover { background: var(--charcoal-light); }
+  .tracklist li.active {
+    background: rgba(255, 107, 0, 0.15);
+    color: var(--orange);
+    font-weight: 600;
+  }
+  .tracklist li .num {
+    width: 24px;
+    flex-shrink: 0;
+    color: #7b7f84;
+    font-size: 12px;
+  }
+  .tracklist li.active .num { color: var(--orange); }
+  .tracklist li .t {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  footer {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 12px;
+    color: #6f7378;
+  }
+  footer a { color: var(--orange); text-decoration: none; }
+</style>
+</head>
+<body>
+  <div class="player">
+    <header>
+      <h1>Wally Painting</h1>
+      <p>Music</p>
+    </header>
+
+    <div class="now-playing">
+      <div class="label">Now Playing</div>
+      <div class="title" id="nowPlayingTitle">Pick a track below</div>
+      <audio id="audio" controls preload="none"></audio>
+      <div class="controls-row">
+        <button class="secondary" id="prevBtn">◀ Prev</button>
+        <button class="secondary" id="shuffleBtn">🔀 Shuffle</button>
+        <button id="nextBtn">Next ▶</button>
+      </div>
+    </div>
+
+    <input type="text" class="search" id="search" placeholder="Search tracks...">
+    <ul class="tracklist" id="tracklist"></ul>
+
+    <footer>Wally Painting LLC &middot; hosted on <a href="https://github.com/wdjgalvao/wallypaintingmusic" target="_blank">GitHub</a></footer>
+  </div>
+
+<script>
+  const audio = document.getElementById('audio');
+  const listEl = document.getElementById('tracklist');
+  const nowPlayingTitle = document.getElementById('nowPlayingTitle');
+  const searchEl = document.getElementById('search');
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  const shuffleBtn = document.getElementById('shuffleBtn');
+
+  let tracks = [];
+  let currentIndex = -1;
+  let shuffleOn = false;
+
+  function renderList(filter = '') {
+    listEl.innerHTML = '';
+    tracks.forEach((track, i) => {
+      if (filter && !track.title.toLowerCase().includes(filter.toLowerCase())) return;
+      const li = document.createElement('li');
+      li.className = i === currentIndex ? 'active' : '';
+      li.innerHTML = `<span class="num">${(i + 1).toString().padStart(2, '0')}</span><span class="t">${track.title}</span>`;
+      li.addEventListener('click', () => playTrack(i));
+      listEl.appendChild(li);
+    });
+  }
+
+  const AUDIO_FOLDER = 'MP3 com nomes pronto';
+
+  function playTrack(i) {
+    if (i < 0 || i >= tracks.length) return;
+    currentIndex = i;
+    audio.src = encodeURIComponent(AUDIO_FOLDER) + '/' + encodeURIComponent(tracks[i].file);
+    audio.play().catch(() => {});
+    nowPlayingTitle.textContent = tracks[i].title;
+    renderList(searchEl.value);
+  }
+
+  function nextTrack() {
+    if (!tracks.length) return;
+    if (shuffleOn) {
+      let next = Math.floor(Math.random() * tracks.length);
+      if (tracks.length > 1) {
+        while (next === currentIndex) next = Math.floor(Math.random() * tracks.length);
+      }
+      playTrack(next);
+    } else {
+      playTrack((currentIndex + 1) % tracks.length);
+    }
+  }
+
+  function prevTrack() {
+    if (!tracks.length) return;
+    playTrack((currentIndex - 1 + tracks.length) % tracks.length);
+  }
+
+  audio.addEventListener('ended', nextTrack);
+  nextBtn.addEventListener('click', nextTrack);
+  prevBtn.addEventListener('click', prevTrack);
+  shuffleBtn.addEventListener('click', () => {
+    shuffleOn = !shuffleOn;
+    shuffleBtn.style.background = shuffleOn ? 'var(--orange)' : 'transparent';
+    shuffleBtn.style.color = shuffleOn ? 'white' : 'var(--text)';
+  });
+  searchEl.addEventListener('input', () => renderList(searchEl.value));
+
+  fetch('tracks.json')
+    .then(r => r.json())
+    .then(data => {
+      tracks = data;
+      renderList();
+    })
+    .catch(err => {
+      nowPlayingTitle.textContent = 'Could not load tracks.json';
+      console.error(err);
+    });
+</script>
+</body>
+</html>
